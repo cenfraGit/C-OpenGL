@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "glad/include/glad/glad.h"
 #include <GLFW/glfw3.h>
+#include "matrix.h"
 
 #define WIDTH 1500
 #define HEIGHT 900
@@ -21,15 +22,18 @@ void process_input(GLFWwindow *window);
 const char* vertex_shader_source =
   "#version 330 core\n"
   "layout (location = 0) in vec3 aPos;"
+  "uniform mat4 model;"
+  "uniform mat4 view;"
+  "uniform mat4 projection;"
   "void main() {"
-  "gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);"
-  "}\0";
+  "  gl_Position = projection * view * model * vec4(aPos, 1.0f);"
+  "}";
 
 const char* fragment_shader_source =
   "#version 330 core\n"
   "out vec4 FragColor;"
   "void main() {"
-  "FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);"
+  "FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);"
   "}\0";
 
 // ------------------------------------------------------------
@@ -89,10 +93,43 @@ int main(void) {
   glDeleteShader(fragment_shader);
 
   float vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-    0.5f, -0.5f, 0.0f,
-    0.0f, 0.5f, 0.0f
-  };
+        -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f
+    };
 
   unsigned int VBO, VAO;
   glGenVertexArrays(1, &VAO);
@@ -104,17 +141,42 @@ int main(void) {
 
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
   glEnableVertexAttribArray(0);
+  
+  /* ------------- gl states ------------- */
+
+  glEnable(GL_DEPTH_TEST);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
   /* ---------------- loop ---------------- */
-  
+
   while (!glfwWindowShouldClose(window)) {
     
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shader_program);
+
+    float* model = mat4(1.0f);
+    rotate_x(model, (float)glfwGetTime());
+    rotate_y(model, (float)glfwGetTime());
+    rotate_z(model, (float)glfwGetTime());
+    
+    float* view = mat4(1.0f);
+    translate(view, 0.0f, 0.0f, -2.0f);
+    
+    float* projection = perspective(2, (float)WIDTH / HEIGHT, 0.1f, 100.0f);
+
+    glUniformMatrix4fv(glGetUniformLocation(shader_program, "model"), 1, GL_TRUE, model);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program, "view"), 1, GL_TRUE, view);
+    glUniformMatrix4fv(glGetUniformLocation(shader_program, "projection"), 1, GL_TRUE, projection);
+
+    free(model);
+    free(view);
+    free(projection);
+
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glPointSize(3);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
     
     glfwSwapBuffers(window);
     glfwPollEvents();
